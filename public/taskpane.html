@@ -22,6 +22,7 @@
   <section id="panel-email" role="tabpanel" aria-labelledby="tab-email">
     <p id="subject" class="subject">No email selected</p>
 
+    <div id="read-tools">
     <div class="grid">
       <button id="btn-summarize" data-lock data-needs-email>Summarize</button>
       <button id="btn-spam" data-lock data-needs-email>Spam check</button>
@@ -53,6 +54,39 @@
     <div class="row">
       <input id="question" type="text" placeholder="What do they want me to decide?" aria-label="Question about this email">
       <button id="btn-ask" data-lock data-needs-email>Ask</button>
+    </div>
+    </div>
+
+    <!-- Shown while writing an email (new mail, reply or forward). -->
+    <div id="compose-tools" hidden>
+      <h2>Write with Claude</h2>
+      <textarea id="compose-brief" rows="3" aria-label="What the email should say"
+        placeholder="What should it say? For example: ask Sam to move Thursday's review to Friday afternoon"></textarea>
+      <div class="row">
+        <select id="compose-tone" aria-label="Tone">
+          <option value="neutral">Neutral tone</option>
+          <option value="friendly">Friendly</option>
+          <option value="formal">Formal</option>
+          <option value="brief">Brief</option>
+        </select>
+        <button id="btn-write" data-lock data-needs-email>Write</button>
+      </div>
+
+      <h2>Improve your writing</h2>
+      <p class="hint">Works on the text you've selected in the email, or else on everything you've written. Your signature and the email you're replying to are left alone.</p>
+      <div class="grid">
+        <button id="btn-improve" data-lock data-needs-email>Improve</button>
+        <button id="btn-grammar" data-lock data-needs-email>Fix spelling and grammar</button>
+        <button id="btn-shorten" data-lock data-needs-email>Shorten</button>
+        <button id="btn-formal" data-lock data-needs-email>More formal</button>
+        <button id="btn-friendly" data-lock data-needs-email>Friendlier</button>
+        <button id="btn-subject" data-lock data-needs-email>Suggest a subject</button>
+      </div>
+      <h2>Translate your email</h2>
+      <div class="row">
+        <select id="compose-lang" aria-label="Language"></select>
+        <button id="btn-translate-draft" data-lock data-needs-email>Translate</button>
+      </div>
     </div>
 
     <div id="result" class="result" hidden></div>

@@ -16,10 +16,18 @@ namespace ClaudeMailAssistant
         void AddCategory(string entryId, string name);
         void NewAppointment(string subject, DateTime start, DateTime end, string location, string body);
         void OpenItem(string entryId);
+
+        // The draft being written (Current.Mode == "compose"). GetBody/GetHeaders with an empty entryId read it too.
+        string GetSubject();
+        void SetSubject(string subject);
+        void SetBody(string html);
+        string GetSelectedText();
+        void ReplaceSelection(string text);
     }
 
     public sealed class MailSnapshot
     {
+        public string Mode; // "read" or "compose"
         public string EntryId;
         public string Subject;
         public string FromName;

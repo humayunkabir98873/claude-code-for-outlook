@@ -1,5 +1,5 @@
 /* global Office */
-import { parseHeaders, analyzeHeaders, analyzeLinks, analyzeAttachments } from "./util.js";
+import { parseHeaders, analyzeHeaders, analyzeLinks, analyzeAttachments, splitDraft, textToHtml, htmlToText } from "./util.js";
 
 const item = () => Office.context.mailbox.item;
 
@@ -72,6 +72,43 @@ export function createEvent(ev) {
     location: ev.location || "",
     body: `Created from: ${item().subject || ""}`,
   });
+}
+
+// ---------- compose mode ----------
+// Standard Office.js compose calls. Only the Outlook COM add-in opens the pane on drafts for now.
+
+const officeCall = (start) =>
+  new Promise((resolve, reject) =>
+    start((r) => (r.status === Office.AsyncResultStatus.Succeeded ? resolve(r.value) : reject(new Error(r.error.message))))
+  );
+
+// In a draft, Office.js gives subject as an object with getAsync/setAsync instead of a string.
+export const isCompose = () => hasItem() && typeof item().subject === "object";
+
+export const getSubject = () => officeCall((cb) => item().subject.getAsync(cb));
+
+export const setSubject = (text) => officeCall((cb) => item().subject.setAsync(text, cb));
+
+export async function getSelectedText() {
+  const selected = await officeCall((cb) => item().getSelectedDataAsync(Office.CoercionType.Text, cb));
+  return (selected && selected.data) || "";
+}
+
+export const replaceSelection = (text) =>
+  officeCall((cb) => item().setSelectedDataAsync(text, { coercionType: Office.CoercionType.Text }, cb));
+
+// The draft split into what the user wrote and what to leave alone: signature and the email being replied to.
+export async function getDraft() {
+  const parts = splitDraft(await getBody(Office.CoercionType.Html));
+  return { ...parts, text: htmlToText(parts.mine), quoteText: htmlToText(parts.quote) };
+}
+
+// Replaces the user's own text. Re-reads the draft first so the signature and quote are kept as they are now.
+export async function replaceDraftText(text) {
+  const d = await getDraft();
+  const spacer = /^\s*(?:<\/div>\s*)?<\/body>/i.test(d.rest) ? "" : "\n<p class=MsoNormal>&nbsp;</p>"; // before a signature or quote
+  const html = d.before + textToHtml(text) + spacer + d.rest;
+  await officeCall((cb) => item().body.setAsync(html, { coercionType: Office.CoercionType.Html }, cb));
 }
 
 export function applyCategory(name) {

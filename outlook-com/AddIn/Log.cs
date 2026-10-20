@@ -6,8 +6,9 @@ namespace ClaudeMailAssistant
     // Appends to %LOCALAPPDATA%\ClaudeMailAssistant\log.txt. Never throws: logging must not take Outlook down.
     public static class Log
     {
-        public static readonly string DataDir =
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ClaudeMailAssistant");
+        // CLAUDE_MAIL_DATA_DIR lets the test harness keep its own browser profile next to a running Outlook.
+        public static readonly string DataDir = Environment.GetEnvironmentVariable("CLAUDE_MAIL_DATA_DIR")
+            ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ClaudeMailAssistant");
 
         static readonly object Gate = new object();
 

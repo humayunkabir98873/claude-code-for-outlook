@@ -34,6 +34,21 @@ function init() {
       })
     );
 
+  // Writing (shown instead of the email actions while composing)
+  $("compose-lang").replaceChildren(...[...$("lang").options].map((o) => new Option(o.text)));
+  $("btn-write").onclick = () => run(composeWrite);
+  for (const kind of ["improve", "grammar", "shorten", "formal", "friendly", "translate"]) {
+    $(kind === "translate" ? "btn-translate-draft" : `btn-${kind}`).onclick = () => run(() => composeEdit(kind));
+  }
+  $("btn-subject").onclick = () => run(composeSubject);
+
+  // Ribbon and right-click menu commands from the Outlook COM add-in.
+  try {
+    for (const [command, target] of Object.entries(COMMANDS)) Office.actions.associate(command, () => runCommand(target));
+  } catch {
+    /* hosts without Office.actions just don't offer these menus */
+  }
+
   // Search
   $("btn-search").onclick = () => run(doSearch);
   $("btn-answer").onclick = () => run(answerFromResults);
@@ -113,9 +128,46 @@ async function withEmail(fn) {
 
 function onItemChanged() {
   clearEmailOutput();
-  const it = Office.context.mailbox.item;
-  $("subject").textContent = it && it.subject ? it.subject : "No email selected";
+  const compose = mail.isCompose();
+  $("read-tools").hidden = compose;
+  $("compose-tools").hidden = !compose;
+  if (compose) {
+    $("subject").textContent = "Writing an email";
+    mail.getSubject().then(
+      (s) => mail.isCompose() && ($("subject").textContent = s ? `Writing: ${s}` : "Writing a new email"),
+      () => {}
+    );
+  } else {
+    const it = Office.context.mailbox.item;
+    $("subject").textContent = it && it.subject ? it.subject : "No email selected";
+  }
   lock(false);
+}
+
+// Menu command -> the pane control it stands for. Buttons are clicked; the writing box just gets focus.
+const COMMANDS = {
+  summarize: "btn-summarize",
+  spam: "btn-spam",
+  triage: "btn-triage",
+  extract: "btn-extract",
+  draft: "btn-draft",
+  translate: "btn-translate",
+  write: "compose-brief",
+  improve: "btn-improve",
+  grammar: "btn-grammar",
+  shorten: "btn-shorten",
+  formal: "btn-formal",
+  friendly: "btn-friendly",
+  subject: "btn-subject",
+  "translate-draft": "btn-translate-draft",
+};
+
+function runCommand(id) {
+  showTab("email");
+  const target = $(id);
+  if (target.tagName !== "BUTTON") return target.focus();
+  if (target.disabled) return showStatus(mail.hasItem() ? "Claude is still working on the last request." : "Select an email first.", true);
+  target.click();
 }
 
 // ---------- output helpers ----------
@@ -269,6 +321,66 @@ function renderExtract(r) {
     box.append(ul);
   }
   showResult(box);
+}
+
+// ---------- writing ----------
+// What to work on: the text selected in the email if any, otherwise everything the user wrote.
+async function draftTarget() {
+  const selected = (await mail.getSelectedText()).trim();
+  if (selected) return { selected: true, text: selected };
+  return { selected: false, text: (await mail.getDraft()).text };
+}
+
+async function composeEdit(kind) {
+  requireKey();
+  const target = await draftTarget();
+  if (!target.text) throw new Error("Write something in the email first, or select the text to change.");
+  const out =
+    kind === "translate" ? await api.composeTranslate(target.text, $("compose-lang").value) : await api.composeEdit(target.text, kind);
+  showText(out);
+  addFollowup(target.selected ? "Replace the selected text" : "Replace my text", async () => {
+    await (target.selected ? mail.replaceSelection(out) : mail.replaceDraftText(out));
+    showStatus("Updated your email.");
+  });
+  addFollowup("Copy", () => copy(out), true);
+}
+
+async function composeWrite() {
+  requireKey();
+  const brief = $("compose-brief").value.trim();
+  if (!brief) {
+    $("compose-brief").focus();
+    throw new Error("Describe what the email should say.");
+  }
+  const [draft, subject] = await Promise.all([mail.getDraft(), mail.getSubject()]);
+  const out = await api.composeWrite({
+    brief,
+    tone: $("compose-tone").value,
+    name: loadSettings().name,
+    subject,
+    existing: draft.text,
+    replyingTo: draft.quoteText,
+  });
+  const newSubject = !subject.trim() && out.subject ? out.subject : ""; // never retitle a reply or forward
+  showText(newSubject ? `Subject: ${newSubject}\n\n${out.body}` : out.body);
+  addFollowup("Put it in my email", async () => {
+    await mail.replaceDraftText(out.body);
+    if (newSubject) await mail.setSubject(newSubject);
+    showStatus("Added to your email.");
+  });
+  addFollowup("Copy", () => copy(out.body), true);
+}
+
+async function composeSubject() {
+  requireKey();
+  const draft = await mail.getDraft();
+  if (!draft.text) throw new Error("Write the email first, then ask for a subject.");
+  const subject = (await api.composeSubject(draft.text)).replace(/^subject:\s*/i, "").trim();
+  showText(subject);
+  addFollowup("Use this subject", async () => {
+    await mail.setSubject(subject);
+    showStatus("Subject updated.");
+  });
 }
 
 // ---------- search ----------

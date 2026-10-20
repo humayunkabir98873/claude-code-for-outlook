@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- New email, reply or forward in its own window. Each button's tag is a command name from COMMANDS in
+     public/js/main.js. -->
+<customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui" onLoad="OnRibbonLoad" loadImage="LoadImage">
+  <ribbon>
+    <tabs>
+      <tab idMso="TabNewMailMessage">
+        <group id="ClaudeGroup" label="Claude">
+          <splitButton id="ClaudeSplit" size="large">
+            <toggleButton id="ClaudeToggle" label="Claude" image="claude" screentip="Claude Mail Assistant"
+                          supertip="Show or hide the Claude pane. Use the arrow to write or improve this email."
+                          onAction="OnToggle" getPressed="GetPressed"/>
+            <menu id="ClaudeMenu">
+              <button id="ClaudeWrite" tag="write" label="Write with Claude..." onAction="OnCommand"/>
+              <button id="ClaudeImprove" tag="improve" label="Improve writing" onAction="OnCommand"/>
+              <button id="ClaudeGrammar" tag="grammar" label="Fix spelling and grammar" onAction="OnCommand"/>
+              <button id="ClaudeShorten" tag="shorten" label="Make it shorter" onAction="OnCommand"/>
+              <button id="ClaudeFormal" tag="formal" label="Make it more formal" onAction="OnCommand"/>
+              <button id="ClaudeFriendly" tag="friendly" label="Make it friendlier" onAction="OnCommand"/>
+              <button id="ClaudeTranslateDraft" tag="translate-draft" label="Translate" onAction="OnCommand"/>
+              <button id="ClaudeSubject" tag="subject" label="Suggest a subject" onAction="OnCommand"/>
+              <menuSeparator id="ClaudeSeparator"/>
+              <checkBox id="ClaudeOpenWhenWriting" label="Open Claude when I write an email"
+                        onAction="OnOpenWhenWriting" getPressed="GetOpenWhenWriting"/>
+            </menu>
+          </splitButton>
+        </group>
+      </tab>
+    </tabs>
+  </ribbon>
+</customUI>

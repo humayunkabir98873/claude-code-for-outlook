@@ -167,6 +167,7 @@ namespace ClaudeMailAssistant
         {
             Registry.CurrentUser.DeleteSubKeyTree(AddinKey, false);
             Registry.CurrentUser.DeleteSubKeyTree(UninstallKey, false);
+            Registry.CurrentUser.DeleteSubKeyTree(@"Software\ClaudeMailAssistant", false); // the add-in's own settings
             using (var key = Registry.CurrentUser.OpenSubKey(DoNotDisableKey, true)) key?.DeleteValue(Ids.ConnectProgId, false);
             foreach (var view in new[] { RegistryView.Registry64, RegistryView.Registry32 })
             {

@@ -44,7 +44,7 @@ async function call({ content, maxTokens = 800, key, model }) {
   return (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("").trim();
 }
 
-const strip = (s, max) => String(s || "").replace(/<\/?email>/gi, "").slice(0, max);
+const strip = (s, max) => String(s || "").replace(/<\/?(?:email|draft)>/gi, "").slice(0, max);
 
 function emailBlock(e) {
   return (
@@ -169,3 +169,44 @@ export function answerFromEmails(question, emails) {
       `and mention which email (#) each fact came from. If they don't contain the answer, say so.\nRequest: ${strip(question, 500)}`,
   });
 }
+
+// ---------- writing (compose mode) ----------
+// The user's own draft goes in <draft> tags; the email they're replying to, if any, is untrusted <email> text.
+
+const PLAIN = "Output only the text itself: no preamble, no quotation marks around it, no markdown.";
+const draftBlock = (text) => `<draft>\n${strip(text, 20000)}\n</draft>\n\n`;
+
+export async function composeWrite({ brief, tone = "neutral", name = "", subject = "", existing = "", replyingTo = "" }) {
+  const text = await call({
+    maxTokens: 1500,
+    content:
+      (replyingTo ? `This is the email the user is replying to:\n<email>\n${strip(replyingTo, 12000)}\n</email>\n\n` : "") +
+      (existing.trim() ? `What the user has written so far:\n${draftBlock(existing)}` : "") +
+      `Write ${replyingTo ? "the user's reply" : "an email"} for the user. What it should say: ${strip(brief, 2000)}\n` +
+      `Use ${TONES[tone] || TONES.neutral}. Plain text, no markdown. Open with a greeting. ` +
+      (name ? `End with a sign-off and the name "${strip(name, 80)}". ` : "End with a sign-off but no name. ") +
+      "Don't add a signature block or contact details. Use a short [bracketed placeholder] for any fact you don't have.\n" +
+      'Respond with JSON only, no code fences: {"subject": a short specific subject line' +
+      (subject ? ` (the current subject is "${strip(subject, 200)}"; keep it unless it no longer fits)` : "") +
+      ', "body": the email text with \\n line breaks}',
+  });
+  const out = extractJson(text);
+  return { subject: String(out.subject || ""), body: String(out.body || "") };
+}
+
+const EDITS = {
+  improve: "Improve the clarity and flow of this text. Keep its meaning, facts, names, structure and language.",
+  grammar: "Correct the spelling, grammar and punctuation of this text. Change nothing else, and keep its language.",
+  shorten: "Make this text noticeably shorter while keeping every important point, its tone and its language.",
+  formal: "Rewrite this text in a more formal, professional tone. Keep its meaning and language.",
+  friendly: "Rewrite this text in a warmer, friendlier tone. Keep its meaning and language.",
+};
+
+export const composeEdit = (text, kind) =>
+  call({ maxTokens: 2000, content: draftBlock(text) + `${EDITS[kind] || EDITS.improve} Keep the line breaks between paragraphs. ${PLAIN}` });
+
+export const composeTranslate = (text, language) =>
+  call({ maxTokens: 2500, content: draftBlock(text) + `Translate this text into ${strip(language, 40)}. Keep names, numbers and line breaks. ${PLAIN}` });
+
+export const composeSubject = (text) =>
+  call({ maxTokens: 60, content: draftBlock(text) + `Suggest one short, specific subject line for this email, in its language. ${PLAIN}` });

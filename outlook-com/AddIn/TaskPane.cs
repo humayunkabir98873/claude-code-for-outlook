@@ -21,9 +21,11 @@ namespace ClaudeMailAssistant
         internal static TaskPane LastCreated;
 
         readonly WebView2 web = new WebView2 { Dock = DockStyle.Fill };
+        readonly List<string> waitingActions = new List<string>();
         IMailSource mail;
         Bridge bridge;
         AuthWindow dialog;
+        bool pageReady;
 
         public TaskPane()
         {
@@ -49,13 +51,37 @@ namespace ClaudeMailAssistant
             }
         }
 
+        // A ribbon or right-click menu command for the page (see COMMANDS in main.js). Held until the page has
+        // loaded when the command is what opened the pane.
+        public void RunAction(string name)
+        {
+            if (pageReady) bridge.Post(new Dictionary<string, object> { ["event"] = "action", ["action"] = name });
+            else waitingActions.Add(name);
+        }
+
         object HandleRequest(string op, Dictionary<string, object> args)
         {
             string entryId = Bridge.Text(args, "entryId");
             switch (op)
             {
                 case "hello":
-                    return new Dictionary<string, object> { ["role"] = "pane", ["item"] = ToJson(mail.Current) };
+                    pageReady = true;
+                    var actions = waitingActions.ToArray();
+                    waitingActions.Clear();
+                    return new Dictionary<string, object> { ["role"] = "pane", ["item"] = ToJson(mail.Current), ["actions"] = actions };
+                case "getSubject":
+                    return mail.GetSubject();
+                case "setSubject":
+                    mail.SetSubject(Bridge.Text(args, "text"));
+                    return null;
+                case "setBody":
+                    mail.SetBody(Bridge.Text(args, "html"));
+                    return null;
+                case "getSelection":
+                    return mail.GetSelectedText();
+                case "replaceSelection":
+                    mail.ReplaceSelection(Bridge.Text(args, "text"));
+                    return null;
                 case "getBody":
                     return mail.GetBody(entryId, Bridge.Flag(args, "html"));
                 case "getHeaders":
@@ -130,6 +156,7 @@ namespace ClaudeMailAssistant
 
         static Dictionary<string, object> ToJson(MailSnapshot s) => s == null ? null : new Dictionary<string, object>
         {
+            ["mode"] = s.Mode ?? "read",
             ["entryId"] = s.EntryId,
             ["subject"] = s.Subject,
             ["fromName"] = s.FromName,

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Main Outlook window: Claude on the Home tab, and in the right-click menu of emails. Each button's tag is a
+     command name from COMMANDS in public/js/main.js. -->
+<customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui" onLoad="OnRibbonLoad" loadImage="LoadImage">
+  <ribbon>
+    <tabs>
+      <tab idMso="TabMail">
+        <group id="ClaudeGroup" label="Claude">
+          <splitButton id="ClaudeSplit" size="large">
+            <toggleButton id="ClaudeToggle" label="Claude" image="claude" screentip="Claude Mail Assistant"
+                          supertip="Show or hide the Claude pane. Use the arrow for quick actions on the selected email."
+                          onAction="OnToggle" getPressed="GetPressed"/>
+            <menu id="ClaudeMenu">
+              <button id="ClaudeSummarize" tag="summarize" label="Summarize" onAction="OnCommand"/>
+              <button id="ClaudeSpam" tag="spam" label="Spam check" onAction="OnCommand"/>
+              <button id="ClaudeTriage" tag="triage" label="Triage" onAction="OnCommand"/>
+              <button id="ClaudeExtract" tag="extract" label="Actions and dates" onAction="OnCommand"/>
+              <button id="ClaudeDraft" tag="draft" label="Draft a reply" onAction="OnCommand"/>
+              <button id="ClaudeTranslate" tag="translate" label="Translate" onAction="OnCommand"/>
+              <menuSeparator id="ClaudeSeparator"/>
+              <checkBox id="ClaudeOpenWhenWriting" label="Open Claude when I write an email"
+                        onAction="OnOpenWhenWriting" getPressed="GetOpenWhenWriting"/>
+            </menu>
+          </splitButton>
+        </group>
+      </tab>
+    </tabs>
+  </ribbon>
+  <contextMenus>
+    <contextMenu idMso="ContextMenuMailItem">
+      <menuSeparator id="ClaudeContextSeparator"/>
+      <menu id="ClaudeContextMenu" label="Claude" image="claude">
+        <button id="ClaudeContextSummarize" tag="summarize" label="Summarize" onAction="OnCommand"/>
+        <button id="ClaudeContextSpam" tag="spam" label="Spam check" onAction="OnCommand"/>
+        <button id="ClaudeContextTriage" tag="triage" label="Triage" onAction="OnCommand"/>
+        <button id="ClaudeContextExtract" tag="extract" label="Actions and dates" onAction="OnCommand"/>
+        <button id="ClaudeContextDraft" tag="draft" label="Draft a reply" onAction="OnCommand"/>
+        <button id="ClaudeContextTranslate" tag="translate" label="Translate" onAction="OnCommand"/>
+      </menu>
+    </contextMenu>
+  </contextMenus>
+</customUI>

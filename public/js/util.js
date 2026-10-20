@@ -132,6 +132,80 @@ export function analyzeHeaders(headers, fromName, fromAddr) {
   return signals;
 }
 
+// ---------- drafts ----------
+
+// Where the email being replied to or forwarded starts, in the HTML Outlook (Word), Outlook on the web and
+// older Outlook versions produce. The earliest match wins.
+const QUOTE_MARKERS = [
+  /<div[^>]*\bid=["']?(?:divRplyFwdMsg|mail-editor-reference-message-container|appendonsend)\b/i,
+  /<div[^>]*border-top:\s*solid\s+#(?:E1E1E1|B5C4DF)/i,
+  /<hr\b/i,
+  /-----\s*Original Message\s*-----/i,
+];
+// Outlook marks the start of an inserted signature with this bookmark (Outlook on the web uses a div).
+const SIGNATURE_MARKERS = [/<a\s+name=["']?_MailAutoSig/i, /<div[^>]*\bid=["']?Signature\b/i];
+
+// A marker found inside a paragraph (a bookmark, a text line) moves back to where that <p> or <div> opens.
+function blockStart(html, index) {
+  if (/^<(?:div|hr)\b/i.test(html.slice(index, index + 4))) return index;
+  let start = index;
+  for (const m of html.slice(0, index).matchAll(/<(?:p|div)\b/gi)) start = m.index;
+  return start;
+}
+
+function firstMatch(html, patterns, from) {
+  let best = -1;
+  for (const re of patterns) {
+    const i = html.slice(from).search(re);
+    if (i !== -1 && (best === -1 || from + i < best)) best = from + i;
+  }
+  return best;
+}
+
+// Splits a draft's HTML into the part the user wrote ("mine") and everything to keep as is: the document
+// head before it, then the signature and the quoted email after it ("rest"; "quote" is just the quoted email).
+export function splitDraft(html) {
+  html = String(html || "");
+  const open = html.match(/<div\s+class=["']?WordSection1["']?[^>]*>/i) || html.match(/<body\b[^>]*>/i);
+  const start = open ? open.index + open[0].length : 0;
+  const close = html.search(/(?:<\/div>\s*)?<\/body>/i);
+  const end = close >= start ? close : html.length;
+
+  const quoteAt = firstMatch(html, QUOTE_MARKERS, start);
+  const sigAt = firstMatch(html, SIGNATURE_MARKERS, start);
+  const quote = quoteAt === -1 || quoteAt > end ? end : blockStart(html, quoteAt);
+  const sig = sigAt === -1 || sigAt > quote ? quote : blockStart(html, sigAt);
+  return { before: html.slice(0, start), mine: html.slice(start, sig), rest: html.slice(sig), quote: html.slice(quote, end) };
+}
+
+// Plain text as Outlook-style paragraphs, so it looks like typed text in the draft.
+export function textToHtml(text) {
+  const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return String(text || "")
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((line) => `<p class=MsoNormal>${line.trim() ? esc(line) : "&nbsp;"}</p>`)
+    .join("\n");
+}
+
+// Visible text of an HTML fragment, one line per paragraph. HTML source line breaks (Word wraps its
+// source at 80 columns) are only spaces, so collapse whitespace before turning block ends into newlines.
+export function htmlToText(html, Parser = globalThis.DOMParser) {
+  const marked = String(html || "")
+    .replace(/<(style|script|head)\b[\s\S]*?<\/\1>/gi, "")
+    .replace(/\s+/g, " ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(?:p|div|li|h[1-6]|tr)>/gi, "$&\n");
+  const text = new Parser().parseFromString(marked, "text/html").body.textContent || "";
+  return text
+    .replace(/ /g, " ")
+    .split("\n")
+    .map((l) => l.trim())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || "");
 
 // filters: false leaves out the attachment and date conditions (used when Graph rejects them).

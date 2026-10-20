@@ -103,7 +103,7 @@ csc(compiler, "addin", [
   `/link:${quote(gacAssembly("office"))}`, // embed only the Office interop types we use
   `/link:${quote(gacAssembly("Microsoft.Office.Interop.Outlook"))}`,
   ...wvRefs.map((r) => `/r:${quote(r)}`),
-  `/resource:${path.join(SRC, "AddIn", "Ribbon.xml")},Ribbon.xml`,
+  ...fs.readdirSync(path.join(SRC, "AddIn")).filter((f) => /^Ribbon\..+\.xml$/.test(f)).map((f) => `/resource:${path.join(SRC, "AddIn", f)},${f}`),
   `/resource:${path.join(SRC, "AddIn", "office-shim.js")},office-shim.js`,
   `/resource:${path.join(ROOT, "public", "assets", "icon-80.png")},icon-80.png`,
   ...sources(SRC, path.join(SRC, "AddIn")).map(quote),

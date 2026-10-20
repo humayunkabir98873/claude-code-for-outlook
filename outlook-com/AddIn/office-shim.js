@@ -16,6 +16,15 @@
   let dialogHandlers = {};
   let item = null;
 
+  // Ribbon and right-click menu commands. One can arrive before the page has registered its handlers
+  // (the pane was just opened by the command), so it waits until Office.actions.associate is called.
+  const actionHandlers = {};
+  let waitingActions = [];
+  function runAction(name) {
+    if (actionHandlers[name]) actionHandlers[name]();
+    else waitingActions.push(name);
+  }
+
   const call = (op, args = {}) =>
     new Promise((resolve, reject) => {
       if (!host) return reject(new Error("This page must run inside the Claude Mail Assistant add-in."));
@@ -45,6 +54,8 @@
       } else if (m.event === "itemChanged") {
         item = makeItem(m.item);
         itemHandlers.forEach((h) => h({ type: ItemChanged }));
+      } else if (m.event === "action") {
+        runAction(m.action);
       } else if (m.event === "dialogMessage" && dialogHandlers[DialogMessageReceived]) {
         dialogHandlers[DialogMessageReceived]({ type: DialogMessageReceived, message: m.message, origin: location.origin });
       } else if (m.event === "dialogEvent" && dialogHandlers[DialogEventReceived]) {
@@ -53,8 +64,33 @@
     });
   }
 
+  // A draft (new mail, reply or forward) has no EntryID yet; the host acts on the draft open in its window.
+  function makeComposeItem() {
+    const escape = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\r?\n/g, "<br>");
+    return {
+      itemType: "message",
+      subject: {
+        getAsync: (a, b) => settle(call("getSubject"), callbackOf(a, b)),
+        setAsync: (text, a, b) => settle(call("setSubject", { text: String(text) }), callbackOf(a, b)),
+      },
+      body: {
+        getAsync: (type, a, b) => settle(call("getBody", { entryId: "", html: type === "html" }), callbackOf(a, b)),
+        setAsync: (data, a, b) => {
+          const html = a && a.coercionType === "text" ? escape(data) : String(data);
+          settle(call("setBody", { html }), callbackOf(a, b));
+        },
+        getTypeAsync: (a, b) => settle(Promise.resolve("html"), callbackOf(a, b)),
+      },
+      // Text coercion only: the selection is read and replaced as plain text.
+      getSelectedDataAsync: (type, a, b) =>
+        settle(call("getSelection").then((data) => ({ data, sourceProperty: "body" })), callbackOf(a, b)),
+      setSelectedDataAsync: (data, a, b) => settle(call("replaceSelection", { text: String(data) }), callbackOf(a, b)),
+    };
+  }
+
   function makeItem(s) {
     if (!s) return null;
+    if (s.mode === "compose") return makeComposeItem();
     const entryId = s.entryId;
     return {
       itemType: "message",
@@ -111,6 +147,7 @@
   const ready = host
     ? call("hello").then((info) => {
         if (info && info.role === "pane") item = makeItem(info.item);
+        (info && info.actions ? info.actions : []).forEach(runAction); // commands sent while the page loaded
         return { host: "Outlook", platform: "PC" };
       })
     : Promise.resolve({ host: null, platform: null });
@@ -124,6 +161,16 @@
     MailboxEnums: { RestVersion: { v1_0: "v1.0", v2_0: "v2.0", Beta: "beta" } },
 
     onReady: (cb) => (cb ? ready.then(cb) : ready),
+
+    actions: {
+      associate(name, handler) {
+        actionHandlers[name] = handler;
+        const now = waitingActions.filter((a) => a === name);
+        waitingActions = waitingActions.filter((a) => a !== name);
+        // Let the page finish starting up before the command runs.
+        now.forEach(() => setTimeout(handler, 0));
+      },
+    },
 
     context: {
       requirements: { isSetSupported: () => true },

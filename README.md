@@ -29,7 +29,14 @@ File > Options > Add-ins > COM Add-ins). Click it, go to **Settings**, paste you
 - Built for classic Outlook 2016 and later, 32- or 64-bit. As a COM add-in it also works on IMAP/POP accounts
   (Search still needs a Microsoft 365 or Outlook.com mailbox). Needs .NET Framework 4.8 and the WebView2 runtime,
   both included in current Windows 10/11.
-- The Claude pane belongs to the main Outlook window. Messages opened in their own window aren't covered yet.
+- **Claude menu**: the arrow under the Claude button, and Claude in the right-click menu of an email, run Summarize,
+  Spam check, Triage, Actions and dates, Draft a reply or Translate straight away. Emails opened in their own
+  window get the same button and menu.
+- **Writing**: when you start a new email, reply or forward, the Claude pane opens with writing tools: Write with
+  Claude (describe it, Claude drafts it), Improve, Fix spelling and grammar, Shorten, More formal, Friendlier,
+  Translate and Suggest a subject. They work on the text you've selected, or else on everything you've written,
+  leaving your signature and the email you're replying to alone. The compose window has the same tools in its
+  Claude menu. Turn the automatic pane off with "Open Claude when I write an email" in the Claude menu.
 - Unlike the web add-in, "Apply category" creates the category if it doesn't exist yet.
 - Build it with `npm run build:outlook` (Windows with Office installed). The source is in `outlook-com/`: a C# add-in
   that shows the same `public/` pages in WebView2 and swaps office.js for `outlook-com/AddIn/office-shim.js`, which
