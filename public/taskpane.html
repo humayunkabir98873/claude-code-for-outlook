@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Claude Mail Assistant</title>
+  <link rel="stylesheet" href="taskpane.css">
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+</head>
+<body>
+<main>
+  <h1>Claude</h1>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tab-email" aria-controls="panel-email" aria-selected="true">Email</button>
+    <button role="tab" id="tab-search" aria-controls="panel-search" aria-selected="false">Search</button>
+    <button role="tab" id="tab-settings" aria-controls="panel-settings" aria-selected="false">Settings</button>
+  </div>
+
+  <p id="status" class="status" role="status" hidden></p>
+
+  <section id="panel-email" role="tabpanel" aria-labelledby="tab-email">
+    <p id="subject" class="subject">No email selected</p>
+
+    <div class="grid">
+      <button id="btn-summarize" data-lock data-needs-email>Summarize</button>
+      <button id="btn-spam" data-lock data-needs-email>Spam check</button>
+      <button id="btn-triage" data-lock data-needs-email>Triage</button>
+      <button id="btn-extract" data-lock data-needs-email>Actions and dates</button>
+    </div>
+
+    <h2>Reply</h2>
+    <select id="tone" aria-label="Tone">
+      <option value="neutral">Neutral tone</option>
+      <option value="friendly">Friendly</option>
+      <option value="formal">Formal</option>
+      <option value="brief">Brief</option>
+    </select>
+    <input id="notes" type="text" placeholder="Decline politely and suggest next week" aria-label="Instructions for the reply">
+    <button id="btn-draft" class="wide" data-lock data-needs-email>Draft reply</button>
+
+    <h2>Translate</h2>
+    <div class="row">
+      <select id="lang" aria-label="Language">
+        <option>English</option><option>Spanish</option><option>French</option><option>German</option>
+        <option>Portuguese</option><option>Hindi</option><option>Arabic</option>
+        <option>Chinese</option><option>Japanese</option>
+      </select>
+      <button id="btn-translate" data-lock data-needs-email>Translate</button>
+    </div>
+
+    <h2>Ask about this email</h2>
+    <div class="row">
+      <input id="question" type="text" placeholder="What do they want me to decide?" aria-label="Question about this email">
+      <button id="btn-ask" data-lock data-needs-email>Ask</button>
+    </div>
+
+    <div id="result" class="result" hidden></div>
+    <div id="followup" class="actions" hidden></div>
+  </section>
+
+  <section id="panel-search" role="tabpanel" aria-labelledby="tab-search" hidden>
+    <p id="search-setup" class="hint" hidden>Searching your mailbox needs a one-time Microsoft setup. <a href="#" id="goto-settings">Open Settings</a></p>
+    <label for="search-q">Search your whole mailbox</label>
+    <div class="row">
+      <input id="search-q" type="text" placeholder="Invoices from Acme last month">
+      <button id="btn-search" data-lock>Search</button>
+    </div>
+    <p id="search-plan" class="hint" hidden></p>
+    <ul id="search-results" class="hits"></ul>
+    <div id="search-followup" class="actions" hidden>
+      <button id="btn-answer" data-lock>Answer from the top results</button>
+    </div>
+    <div id="search-answer" class="result" hidden></div>
+  </section>
+
+  <section id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
+    <label for="api-key">Claude API key</label>
+    <div class="row">
+      <input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-...">
+      <button id="btn-showkey" class="secondary" type="button">Show</button>
+    </div>
+    <p class="hint">Saved on this computer and sent only to api.anthropic.com. Use a key with a spend limit. Create one on the Claude Platform (see docs.claude.com).</p>
+
+    <label for="model">Model</label>
+    <select id="model"></select>
+
+    <label for="user-name">Your name (for reply sign-offs)</label>
+    <input id="user-name" type="text" autocomplete="name">
+
+    <details>
+      <summary>Mail search setup (optional)</summary>
+      <p class="hint">Outlook add-ins can't search the whole mailbox on their own, so search signs in through Microsoft Graph with an app registration you create once (free, about 5 minutes):</p>
+      <ol class="hint">
+        <li>Open entra.microsoft.com, then App registrations, then New registration.</li>
+        <li>Name it anything. For account types choose "any organizational directory and personal Microsoft accounts".</li>
+        <li>Under Redirect URI choose "Single-page application" and enter <code id="redirect-uri">https://localhost:3000/auth.html</code>.</li>
+        <li>After creating it, open API permissions, add Microsoft Graph, Delegated, <code>Mail.Read</code>.</li>
+        <li>Copy the Application (client) ID into the box below.</li>
+      </ol>
+      <label for="client-id">Application (client) ID</label>
+      <input id="client-id" type="text" spellcheck="false">
+      <label for="tenant">Tenant (leave as "common" unless IT says otherwise)</label>
+      <input id="tenant" type="text" spellcheck="false">
+    </details>
+
+    <div class="actions">
+      <button id="btn-save" data-lock>Save</button>
+      <button id="btn-test" class="secondary" data-lock>Test key</button>
+      <button id="btn-clear" class="secondary" data-lock>Remove key</button>
+    </div>
+  </section>
+</main>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
